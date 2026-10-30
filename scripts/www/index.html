@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanças Pessoais</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #f0f2f5; color: #1a1a1a; padding: 16px; max-width: 900px; margin: 0 auto; min-height: 100vh; padding-bottom: 40px; }
+    header h1 { text-align: center; margin: 16px 0 20px; font-size: 24px; }
+    
+    /* NOTIFICAÇÕES */
+    #toastBox { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .toast { background: #2563eb; color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out forwards; }
+    .toast.sucesso { background: #10b981; }
+    .toast.erro { background: #dc2626; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ABAS */
+    .abas { display: flex; gap: 4px; margin-bottom: 20px; background: white; padding: 6px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow-x: auto; }
+    .aba { flex: 1; padding: 12px 8px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: #666; transition: all 0.2s; white-space: nowrap; }
+    .aba:hover { background: #f0f2f5; }
+    .aba.ativa { background: #2563eb; color: white; }
+    .conteudo-aba { display: none; animation: fadeIn 0.3s; }
+    .conteudo-aba.ativa { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* DASHBOARD */
+    .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .dash-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; border-left: 4px solid #2563eb; }
+    .dash-card.verde { border-left-color: #10b981; }
+    .dash-card.vermelho { border-left-color: #dc2626; }
+    .dash-card.laranja { border-left-color: #f59e0b; }
+    .dash-card span { font-size: 13px; color: #666; font-weight: 600; }
+    .dash-card strong { font-size: 24px; color: #1a1a1a; }
+    
+    .dash-secao { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; }
+    .dash-secao h3 { font-size: 16px; margin-bottom: 16px; color: #333; border-bottom: 2px solid #f0f2f5; padding-bottom: 8px; }
+    .dash-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px dashed #eee; }
+    .dash-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+    /* FORMULÁRIOS E LISTAS */
+    .resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .card-resumo { background: white; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .card-resumo span { font-size: 12px; color: #666; }
+    .card-resumo strong { font-size: 18px; color: #2563eb; word-break: break-word; }
+    
+    .formulario { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .formulario h2 { margin-bottom: 16px; font-size: 18px; }
+    .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-form input, .grid-form select, .grid-form button { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 100%; font-family: inherit; }
+    .grid-form input:focus, .grid-form select:focus { outline: 2px solid #2563eb; border-color: transparent; }
+    .grid-form button { grid-column: span 2; background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+    .grid-form button:hover { background: #1d4ed8; }
+    .campo-total { grid-column: span 2; }
+    .campo-total label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+    
+    .filtros { display: flex; gap: 12px; margin-bottom: 16px; }
+    .filtros select { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 14px; }
+    
+    .lista { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .lista h2 { margin-bottom: 16px; font-size: 18px; }
+    .lista ul { list-style: none; }
+    .lista li { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; gap: 12px; }
+    .lista li:last-child { border-bottom: none; }
+    .despesa-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+    .despesa-info .desc { font-weight: 600; word-break: break-word; }
+    .despesa-info .meta { font-size: 12px; color: #666; }
+    .despesa-valor { font-weight: 700; color: #dc2626; white-space: nowrap; }
+    
+    /* BOTÃO EXCLUIR (SISTEMA DE 2 CLIQUES) */
+    .btn-excluir { background: none; border: none; color: #dc2626; font-size: 18px; cursor: pointer; padding: 6px 10px; border-radius: 6px; transition: all 0.2s; }
+    .btn-excluir:hover { background: #fee2e2; }
+    .btn-excluir.confirmar { background: #dc2626; color: white; font-size: 12px; font-weight: 700; padding: 8px 12px; }
+
+    .vazio { text-align: center; color: #999; padding: 24px; justify-content: center !important; }
+    
+    /* CARTÕES */
+    .cartao-item { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 20px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+    .cartao-item .info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .cartao-item .nome { font-size: 16px; font-weight: 700; }
+    .cartao-item .detalhe { font-size: 12px; opacity: 0.85; }
+    .cartao-item .limite { font-size: 14px; font-weight: 600; margin-top: 4px; }
+    .cartao-item .btn-excluir { color: white; }
+    .cartao-item .btn-excluir:hover { background: rgba(255,255,255,0.2); }
+    .cartao-item .btn-excluir.confirmar { background: #dc2626; }
+    
+    /* FATURAS */
+    .btn-cartao-fatura { background: white; border: 2px solid #2563eb; color: #2563eb; padding: 16px; border-radius: 12px; width: 100%; text-align: left; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; transition: all 0.2s; }
+    .btn-cartao-fatura:hover { background: #eff6ff; }
+    .btn-cartao-fatura.aberto { background: #2563eb; color: white; border-radius: 12px 12px 0 0; margin-bottom: 0; }
+    .conteudo-fatura { display: none; background: white; border: 2px solid #2563eb; border-top: none; border-radius: 0 0 12px 12px; padding: 16px; margin-bottom: 24px; }
+    .conteudo-fatura.aberto { display: block; }
+    
+    .fatura-mes { background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; }
+    .fatura-mes h4 { font-size: 15px; margin-bottom: 12px; color: #1e293b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .fatura-parcela { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #e2e8f0; color: #475569; }
+    .fatura-parcela:last-child { border-bottom: none; }
+    .fatura-total { display: flex; justify-content: space-between; padding-top: 12px; margin-top: 8px; border-top: 2px solid #cbd5e1; font-weight: 700; color: #dc2626; }
+    
+    /* BOTÕES DE AÇÃO */
+    .btn-pagar { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; transition: background 0.2s; display: flex; align-items: center; gap: 4px; }
+    .btn-pagar:hover { background: #059669; }
+    .btn-cancelar { background: #94a3b8; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .tag-pago { color: #10b981; font-size: 12px; font-weight: 700; background: #d1fae5; padding: 4px 8px; border-radius: 4px; }
+
+    .compras-cartao { margin-top: 20px; }
+    .compras-cartao h4 { font-size: 16px; margin-bottom: 12px; color: #1e293b; }
+    .compra-item { background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+
+    /* BOLETOS */
+    .boleto-card { background: white; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .boleto-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .boleto-info strong { font-size: 16px; color: #1e293b; }
+    .boleto-info span { font-size: 13px; color: #64748b; }
+    .boleto-valor { font-size: 18px; font-weight: 700; color: #dc2626; margin-right: 16px; }
+    .boleto-status { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+    .status-pendente { background: #fef3c7; color: #d97706; }
+    .status-vencido { background: #fee2e2; color: #dc2626; }
+    .status-pago { background: #d1fae5; color: #059669; }
+
+    @media (max-width: 600px) {
+      .resumo, .dashboard-grid { grid-template-columns: 1fr; }
+      .grid-form { grid-template-columns: 1fr; }
+      .grid-form button, .campo-total { grid-column: span 1; }
+      .filtros { flex-direction: column; }
+      .aba { font-size: 11px; padding: 10px 4px; }
+      .boleto-card { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastBox"></div>
+
+  <header>
+    <h1>💰 Minhas Finanças</h1>
+  </header>
+
+  <div class="abas">
+    <button type="button" class="aba ativa" data-aba="dashboard">📊 Início</button>
+    <button type="button" class="aba" data-aba="despesas">📋 Gastos</button>
+    <button type="button" class="aba" data-aba="cartoes">💳 Cartões</button>
+    <button type="button" class="aba" data-aba="boletos">🧾 Boletos</button>
+    <button type="button" class="aba" data-aba="faturas">📈 Faturas</button>
+  </div>
+
+  <!-- ABA DASHBOARD -->
+  <div class="conteudo-aba ativa" id="aba-dashboard">
+    <div class="dashboard-grid">
+      <div class="dash-card">
+        <span>Gastos no Mês (Total)</span>
+        <strong id="dashGastoMes">R$ 0,00</strong>
+      </div>
+      <div class="dash-card laranja">
+        <span>Faturas de Cartão (Mês)</span>
+        <strong id="dashFaturaMes">R$ 0,00</strong>
+      </div>
+      <div class="dash-card vermelho">
+        <span>Boletos Pendentes</span>
+        <strong id="dashBoletos">R$ 0,00</strong>
+      </div>
+      <div class="dash-card verde">
+        <span>Boletos Pagos</span>
+        <strong id="dashBoletosPagos">R$ 0,00</strong>
+      </div>
+    </div>
+
+    <div class="dash-secao">
+      <h3>🚨 Próximos Vencimentos (Boletos)</h3>
+      <div id="dashProximosVencimentos">
+        <p class="vazio">Nenhum boleto pendente.</p>
+      </div>
+    </div>
+
+    <div class="dash-secao">
+      <h3>🛍️ Últimas Compras</h3>
+      <div id="dashUltimasCompras">
+        <p class="vazio">Nenhuma compra recente.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA DESPESAS -->
+  <div class="conteudo-aba" id="aba-despesas">
+    <section class="resumo">
+      <div class="card-resumo"><span>Total do Mês</span><strong id="totalMes">R$ 0,00</strong></div>
+      <div class="card-resumo"><span>Cartão de Crédito</span><strong id="totalCartao">R$ 0,00</strong></div>
+      <div class="card-resumo"><span>Dia a Dia</span><strong id="totalDia">R$ 0,00</strong></div>
+    </section>
+
+    <section class="formulario">
+      <h2>Nova Despesa</h2>
+      <div class="grid-form">
+        <input type="text" id="descricao" placeholder="Descrição">
+        <input type="text" id="valor" placeholder="Valor total (ex: 1.150,00)">
+        <select id="tipo">
+          <option value="">Tipo de pagamento</option>
+          <option value="cartao">Cartão de Crédito</option>
+          <option value="debito">Cartão de Débito</option>
+          <option value="dinheiro">Dinheiro / Pix</option>
+        </select>
+        <select id="categoria">
+          <option value="">Categoria</option>
+          <option value="alimentacao">🍔 Alimentação</option>
+          <option value="transporte">🚗 Transporte</option>
+          <option value="moradia">🏠 Moradia</option>
+          <option value="lazer">🎮 Lazer</option>
+          <option value="saude">💊 Saúde</option>
+          <option value="educacao">📚 Educação</option>
+          <option value="outros">📦 Outros</option>
+        </select>
+        <input type="date" id="data">
+        <select id="cartaoId" style="display:none;"><option value="">Selecione o cartão</option></select>
+        <select id="parcelas" style="display:none;">
+          <option value="1">À vista (1x)</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="4">4x</option>
+          <option value="5">5x</option>
+          <option value="6">6x</option>
+          <option value="7">7x</option>
+          <option value="8">8x</option>
+          <option value="9">9x</option>
+          <option value="10">10x</option>
+          <option value="11">11x</option>
+          <option value="12">12x</option>
+        </select>
+        <div class="campo-total" id="previewParcelas" style="display:none;">
+          <label>Valor de cada parcela:</label>
+          <strong id="valorParcela" style="color:#2563eb;">R$ 0,00</strong>
+        </div>
+        <button type="button" onclick="adicionarDespesa()">Adicionar Despesa</button>
+      </div>
+    </section>
+
+    <section class="filtros">
+      <select id="filtroTipo">
+        <option value="todos">Todos os tipos</option>
+        <option value="cartao">Cartão de Crédito</option>
+        <option value="debito">Cartão de Débito</option>
+        <option value="dinheiro">Dinheiro/Pix</option>
+      </select>
+      <select id="filtroMes">
+        <option value="atual">Mês atual</option>
+        <option value="todos">Todos os meses</option>
+      </select>
+    </section>
+
+    <section class="lista">
+      <h2>Despesas</h2>
+      <ul id="listaDespesas"></ul>
+    </section>
+  </div>
+
+  <!-- ABA CARTÕES -->
+  <div class="conteudo-aba" id="aba-cartoes">
+    <section class="formulario">
+      <h2>Cadastrar Cartão de Crédito</h2>
+      <div class="grid-form">
+        <input type="text" id="nomeCartao" placeholder="Nome do cartão (ex: Nubank)" maxlength="30">
+        <input type="text" id="limiteCartao" placeholder="Limite total (ex: 5000)">
+        <input type="number" id="fechamento" placeholder="Dia de fechamento (1-31)">
+        <input type="number" id="vencimento" placeholder="Dia de vencimento (1-31)">
+        <button type="button" onclick="cadastrarCartao()">Cadastrar Cartão</button>
+      </div>
+    </section>
+
+    <section class="lista">
+      <h2>Meus Cartões e Limites</h2>
+      <div id="listaCartoes"></div>
+    </section>
+  </div>
+
+  <!-- ABA BOLETOS -->
+  <div class="conteudo-aba" id="aba-boletos">
+    <section class="formulario">
+      <h2>Cadastrar Boleto</h2>
+      <div class="grid-form">
+        <input type="text" id="descBoleto" placeholder="Descrição (ex: Aluguel, Luz)">
+        <input type="text" id="valorBoleto" placeholder="Valor (ex: 150,50)">
+        <input type="date" id="vencimentoBoleto">
+        <button type="button" onclick="cadastrarBoleto()">Cadastrar Boleto</button>
+      </div>
+    </section>
+
+    <section class="lista">
+      <h2>Meus Boletos</h2>
+      <div id="listaBoletos"></div>
+    </section>
+  </div>
+
+  <!-- ABA FATURAS -->
+  <div class="conteudo-aba" id="aba-faturas">
+    <section class="formulario">
+      <h2>Projeção de Faturas</h2>
+      <p style="color:#666;font-size:13px;">Clique no cartão para ver as faturas mês a mês e o histórico de compras.</p>
+    </section>
+    <div id="listaFaturas"></div>
+  </div>
+
+  <script>
+    // ===== NOTIFICAÇÕES E CONVERSOR =====
+    function toast(msg, tipo) {
+      const box = document.getElementById('toastBox');
+      const el = document.createElement('div');
+      el.className = 'toast ' + (tipo || '');
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
+    }
+
+    function parseMoeda(str) {
+      if (!str) return 0;
+      let limpo = str.replace(/[^\d,.-]/g, '');
+      if (limpo.includes(',')) {
+        limpo = limpo.replace(/\./g, '').replace(',', '.');
+      } else if (limpo.split('.').length > 2) {
+        const partes = limpo.split('.');
+        const decimal = partes.pop();
+        limpo = partes.join('') + '.' + decimal;
+      } else if (limpo.includes('.')) {
+        const partes = limpo.split('.');
+        if (partes[1].length === 3) limpo = partes[0] + partes[1]; 
+      }
+      return parseFloat(limpo) || 0;
+    }
+
+    // ===== ESTADO =====
+    let podeSalvarLocal = true;
+    try { localStorage.setItem('teste', '1'); localStorage.removeItem('teste'); } catch (e) { podeSalvarLocal = false; }
+
+    let despesas = [], cartoes = [], faturasPagas = [], boletos = [];
+    if (podeSalvarLocal) {
+      try {
+        despesas = JSON.parse(localStorage.getItem('despesas') || '[]');
+        cartoes = JSON.parse(localStorage.getItem('cartoes') || '[]');
+        faturasPagas = JSON.parse(localStorage.getItem('faturasPagas') || '[]');
+        boletos = JSON.parse(localStorage.getItem('boletos') || '[]');
+      } catch (err) {}
+    }
+
+    const gerarId = () => 'id_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const formatarMoeda = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formatarData = (dataStr) => { if (!dataStr) return ''; const p = dataStr.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+    
+    const salvarDados = () => {
+      if (podeSalvarLocal) {
+        try { 
+          localStorage.setItem('despesas', JSON.stringify(despesas)); 
+          localStorage.setItem('cartoes', JSON.stringify(cartoes)); 
+          localStorage.setItem('faturasPagas', JSON.stringify(faturasPagas)); 
+          localStorage.setItem('boletos', JSON.stringify(boletos));
+        } catch (e) {}
+      }
+    };
+
+    const mesAtual = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); };
+    const hojeStr = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'); };
+    const nomeMes = (anoMes) => { const p = anoMes.split('-'); const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return nomes[parseInt(p[1]) - 1] + '/' + p[0]; };
+    const adicionarMeses = (anoMes, n) => { const p = anoMes.split('-'); const d = new Date(Number(p[0]), Number(p[1]) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    const mesFatura = (dataCompra, diaFechamento) => { const p = dataCompra.split('-'); let anoF = Number(p[0]), mesF = Number(p[1]); const dia = Number(p[2]); if (dia > diaFechamento) { mesF += 1; if (mesF > 12) { mesF = 1; anoF += 1; } } return anoF + '-' + String(mesF).padStart(2, '0'); };
+
+    const $ = (id) => document.getElementById(id);
+
+    // ===== ABAS =====
+    document.querySelectorAll('.aba').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const alvo = btn.getAttribute('data-aba');
+        document.querySelectorAll('.aba').forEach(function (b) { b.classList.remove('ativa'); });
+        document.querySelectorAll('.conteudo-aba').forEach(function (c) { c.classList.remove('ativa'); });
+        btn.classList.add('ativa');
+        const secao = $('aba-' + alvo);
+        if (secao) secao.classList.add('ativa');
+        renderTudo();
+      });
+    });
+
+    // ===== LÓGICA DE CONFIRMAÇÃO E EXCLUSÃO =====
+    // Função genérica que transforma o botão em "Confirmar?" antes de apagar
+    function confirmarAcao(btn, callback) {
+      if (btn.dataset.confirm === '1') {
+        callback(); // Executa a ação
+      } else {
+        btn.dataset.confirm = '1';
+        if (btn.classList.contains('btn-excluir')) {
+          btn.innerHTML = 'Excluir?';
+          btn.classList.add('confirmar');
+        } else {
+          btn.innerHTML = 'Confirmar?';
+          btn.style.background = '#f59e0b';
+        }
+        
+        setTimeout(() => {
+          if (btn) {
+            btn.dataset.confirm = '0';
+            if (btn.classList.contains('btn-excluir')) {
+              btn.innerHTML = '🗑️';
+              btn.classList.remove('confirmar');
+            } else {
+              btn.innerHTML = 'Pagar';
+              btn.style.background = '#10b981';
+            }
+          }
+        }, 3000);
+      }
+    }
+
+    // ===== CARTÕES E LIMITES =====
+    function calcularUsoCartao(cartaoId) {
+      let totalUsado = 0;
+      const despesasCartao = despesas.filter(d => d.cartaoId === cartaoId && d.tipo === 'cartao');
+      const cartao = cartoes.find(c => c.id === cartaoId);
+      if (!cartao) return 0;
+
+      despesasCartao.forEach(d => {
+        const mesInicio = mesFatura(d.data, cartao.fechamento);
+        const valorParcela = d.valor / d.parcelas;
+        for (let p = 0; p < d.parcelas; p++) {
+          const mes = adicionarMeses(mesInicio, p);
+          const pago = faturasPagas.some(f => f.cartaoId === cartaoId && f.mes === mes);
+          if (!pago) totalUsado += valorParcela;
+        }
+      });
+      return totalUsado;
+    }
+
+    window.pagarFatura = function(cartaoId, mes) {
+      confirmarAcao(event.target, () => {
+        const jaPago = faturasPagas.some(f => f.cartaoId === cartaoId && f.mes === mes);
+        if (!jaPago) {
+          faturasPagas.push({ cartaoId: cartaoId, mes: mes });
+          salvarDados();
+          renderTudo();
+          toast('Fatura paga! Limite liberado.', 'sucesso');
+        }
+      });
+    };
+
+    window.toggleCartaoFatura = function(id, event) {
+      if(event) event.stopPropagation();
+      const btn = document.getElementById('btn-fatura-' + id);
+      const conteudo = document.getElementById('conteudo-fatura-' + id);
+      if (btn.classList.contains('aberto')) {
+        btn.classList.remove('aberto');
+        conteudo.classList.remove('aberto');
+      } else {
+        btn.classList.add('aberto');
+        conteudo.classList.add('aberto');
+      }
+    };
+
+    window.excluirCartao = function (id) {
+      confirmarAcao(event.target, () => {
+        cartoes = cartoes.filter(c => c.id !== id);
+        despesas = despesas.filter(d => d.cartaoId !== id);
+        faturasPagas = faturasPagas.filter(f => f.cartaoId !== id);
+        salvarDados();
+        renderTudo();
+        toast('Cartão excluído.', 'sucesso');
+      });
+    };
+
+    window.cadastrarCartao = function() {
+      try {
+        const nome = $('nomeCartao').value.trim();
+        const limite = parseMoeda($('limiteCartao').value);
+        const fechamento = parseInt($('fechamento').value);
+        const vencimento = parseInt($('vencimento').value);
+
+        if (!nome) { toast('Informe o nome do cartão.', 'erro'); return; }
+        if (isNaN(limite) || limite <= 0) { toast('Informe um limite válido.', 'erro'); return; }
+        if (isNaN(fechamento) || fechamento < 1 || fechamento > 31) { toast('Fechamento deve ser entre 1 e 31.', 'erro'); return; }
+        if (isNaN(vencimento) || vencimento < 1 || vencimento > 31) { toast('Vencimento deve ser entre 1 e 31.', 'erro'); return; }
+
+        const cartao = { id: gerarId(), nome, limite, fechamento, vencimento };
+        cartoes.push(cartao);
+        salvarDados();
+
+        $('nomeCartao').value = '';
+        $('limiteCartao').value = '';
+        $('fechamento').value = '';
+        $('vencimento').value = '';
+        
+        renderTudo();
+        toast('Cartão "' + cartao.nome + '" cadastrado!', 'sucesso');
+      } catch (err) { toast('Erro: ' + err.message, 'erro'); }
+    };
+
+    // ===== DESPESAS =====
+    const selectTipo = $('tipo');
+    const selectCartao = $('cartaoId');
+    const selectParcelas = $('parcelas');
+    const previewParcelas = $('previewParcelas');
+    const valorParcela = $('valorParcela');
+
+    const atualizarCamposCartao = function () {
+      if (selectTipo.value === 'cartao') {
+        selectCartao.style.display = 'block';
+        selectParcelas.style.display = 'block';
+        previewParcelas.style.display = 'block';
+        atualizarPreview();
+      } else {
+        selectCartao.style.display = 'none';
+        selectParcelas.style.display = 'none';
+        previewParcelas.style.display = 'none';
+      }
+    };
+
+    const atualizarPreview = function () {
+      const valor = parseMoeda($('valor').value);
+      const parcelas = parseInt(selectParcelas.value) || 1;
+      valorParcela.textContent = formatarMoeda(valor / parcelas) + ' x ' + parcelas + 'x';
+    };
+
+    selectTipo.addEventListener('change', atualizarCamposCartao);
+    selectParcelas.addEventListener('change', atualizarPreview);
+    $('valor').addEventListener('input', atualizarPreview);
+
+    window.adicionarDespesa = function() {
+      try {
+        const descricao = $('descricao').value.trim();
+        const valor = parseMoeda($('valor').value);
+        const tipo = selectTipo.value;
+        const categoria = $('categoria').value;
+        const data = $('data').value;
+        
+        if (!descricao) { toast('Informe a descrição.', 'erro'); return; }
+        if (isNaN(valor) || valor <= 0) { toast('Valor inválido.', 'erro'); return; }
+        if (!tipo) { toast('Selecione o tipo de pagamento.', 'erro'); return; }
+        if (!categoria) { toast('Selecione a categoria.', 'erro'); return; }
+        if (!data) { toast('Informe a data.', 'erro'); return; }
+
+        const cartaoId = tipo === 'cartao' ? selectCartao.value : null;
+        const parcelas = tipo === 'cartao' ? parseInt(selectParcelas.value) : 1;
+
+        if (tipo === 'cartao') {
+          if (!cartaoId) { toast('Selecione um cartão.', 'erro'); return; }
+          const cartao = cartoes.find(c => c.id === cartaoId);
+          if (cartao) {
+            const usado = calcularUsoCartao(cartao.id);
+            if (usado + valor > cartao.limite) toast('Aviso: Esta compra excede o limite!', 'erro');
+          }
+        }
+
+        const despesa = { id: gerarId(), descricao, valor, tipo, categoria, data, cartaoId, parcelas };
+        despesas.push(despesa);
+        salvarDados();
+
+        $('descricao').value = '';
+        $('valor').value = '';
+        selectTipo.value = '';
+        $('categoria').value = '';
+        $('data').valueAsDate = new Date();
+        atualizarCamposCartao();
+        renderTudo();
+        toast('Despesa adicionada!', 'sucesso');
+      } catch (err) { toast('Erro: ' + err.message, 'erro'); }
+    };
+
+    window.excluir = function (id) {
+      confirmarAcao(event.target, () => {
+        despesas = despesas.filter(d => d.id !== id);
+        salvarDados();
+        renderTudo();
+        toast('Despesa excluída.', 'sucesso');
+      });
+    };
+
+    // ===== BOLETOS =====
+    window.cadastrarBoleto = function() {
+      const desc = $('descBoleto').value.trim();
+      const valor = parseMoeda($('valorBoleto').value);
+      const vencimento = $('vencimentoBoleto').value;
+
+      if (!desc) { toast('Informe a descrição do boleto.', 'erro'); return; }
+      if (isNaN(valor) || valor <= 0) { toast('Informe um valor válido.', 'erro'); return; }
+      if (!vencimento) { toast('Informe a data de vencimento.', 'erro'); return; }
+
+      const boleto = { id: gerarId(), descricao: desc, valor: valor, vencimento: vencimento, pago: false };
+      boletos.push(boleto);
+      salvarDados();
+
+      $('descBoleto').value = '';
+      $('valorBoleto').value = '';
+      $('vencimentoBoleto').value = '';
+
+      renderTudo();
+      toast('Boleto cadastrado com sucesso!', 'sucesso');
+    };
+
+    window.pagarBoleto = function(id) {
+      confirmarAcao(event.target, () => {
+        const boleto = boletos.find(b => b.id === id);
+        if (boleto) {
+          boleto.pago = true;
+          salvarDados();
+          renderTudo();
+          toast('Boleto pago com sucesso!', 'sucesso');
+        }
+      });
+    };
+
+    window.excluirBoleto = function(id) {
+      confirmarAcao(event.target, () => {
+        boletos = boletos.filter(b => b.id !== id);
+        salvarDados();
+        renderTudo();
+        toast('Boleto excluído.', 'sucesso');
+      });
+    };
+
+    // ===== RENDERIZAÇÃO =====
+    function renderDashboard() {
+      let faturaMes = 0, gastosMes = 0, boletosPendentes = 0, boletosPagos = 0;
+      const mesStr = mesAtual();
+      const hoje = hojeStr();
+
+      despesas.forEach(d => {
+        if (d.tipo === 'cartao') {
+          const cartao = cartoes.find(c => c.id === d.cartaoId);
+          if (!cartao) return;
+          const mesInicio = mesFatura(d.data, cartao.fechamento);
+          for (let p = 0; p < d.parcelas; p++) {
+            const m = adicionarMeses(mesInicio, p);
+            if (m === mesStr) faturaMes += d.valor / d.parcelas;
+          }
+        } else if (d.data.startsWith(mesStr)) {
+          gastosMes += d.valor;
+        }
+      });
+
+      boletos.forEach(b => {
+        if (b.pago) boletosPagos += b.valor;
+        else boletosPendentes += b.valor;
+      });
+
+      $('dashFaturaMes').textContent = formatarMoeda(faturaMes);
+      $('dashGastoMes').textContent = formatarMoeda(gastosMes + faturaMes);
+      $('dashBoletos').textContent = formatarMoeda(boletosPendentes);
+      $('dashBoletosPagos').textContent = formatarMoeda(boletosPagos);
+
+      const pendentes = boletos.filter(b => !b.pago).sort((a,b) => a.vencimento.localeCompare(b.vencimento)).slice(0, 5);
+      const divVenc = $('dashProximosVencimentos');
+      if (pendentes.length === 0) {
+        divVenc.innerHTML = '<p class="vazio">Nenhum boleto pendente.</p>';
+      } else {
+        divVenc.innerHTML = pendentes.map(b => {
+          const isVencido = b.vencimento < hoje;
+          return `<div class="dash-item">
+            <span>${b.descricao} ${isVencido ? '<span style="color:red;font-size:10px;">(Vencido)</span>' : ''}</span>
+            <strong>${formatarData(b.vencimento)} - ${formatarMoeda(b.valor)}</strong>
+          </div>`;
+        }).join('');
+      }
+
+      const ultimas = despesas.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+      const divCompras = $('dashUltimasCompras');
+      if (ultimas.length === 0) {
+        divCompras.innerHTML = '<p class="vazio">Nenhuma compra recente.</p>';
+      } else {
+        divCompras.innerHTML = ultimas.map(d => `
+          <div class="dash-item">
+            <span>${d.descricao}</span>
+            <strong>${formatarMoeda(d.valor)}</strong>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderDespesas() {
+      const filtroTipo = $('filtroTipo').value;
+      const filtroMes = $('filtroMes').value;
+      let lista = despesas.slice();
+
+      if (filtroTipo !== 'todos') lista = lista.filter(d => d.tipo === filtroTipo);
+
+      const mes = mesAtual();
+      if (filtroMes === 'atual') lista = lista.filter(d => d.data.startsWith(mes));
+
+      lista.sort((a, b) => b.data.localeCompare(a.data));
+
+      let totalMes = 0, totalCartao = 0, totalDia = 0;
+
+      despesas.forEach(d => {
+        if (d.tipo === 'cartao') {
+          const cartao = cartoes.find(c => c.id === d.cartaoId);
+          if (!cartao) return;
+          const mesInicio = mesFatura(d.data, cartao.fechamento);
+          for (let p = 0; p < d.parcelas; p++) {
+            const m = adicionarMeses(mesInicio, p);
+            if (m === mes) {
+              totalCartao += d.valor / d.parcelas;
+              totalMes += d.valor / d.parcelas;
+            }
+          }
+        } else if (d.data.startsWith(mes)) {
+          totalDia += d.valor;
+          totalMes += d.valor;
+        }
+      });
+
+      $('totalMes').textContent = formatarMoeda(totalMes);
+      $('totalCartao').textContent = formatarMoeda(totalCartao);
+      $('totalDia').textContent = formatarMoeda(totalDia);
+
+      const ul = $('listaDespesas');
+      ul.innerHTML = '';
+
+      if (lista.length === 0) {
+        ul.innerHTML = '<li class="vazio">Nenhuma despesa encontrada.</li>';
+        return;
+      }
+
+      const icones = { alimentacao:'🍔', transporte:'🚗', moradia:'🏠', lazer:'🎮', saude:'💊', educacao:'📚', outros:'📦' };
+      const tipos = { cartao:'💳 Cartão de Crédito', debito:'💳 Cartão de Débito', dinheiro:'💵 Dinheiro/Pix' };
+
+      lista.forEach(d => {
+        const cartao = d.cartaoId ? cartoes.find(c => c.id === d.cartaoId) : null;
+        let meta = formatarData(d.data) + ' • ' + (tipos[d.tipo] || d.tipo);
+        if (cartao) {
+          meta += ' • ' + cartao.nome;
+          if (d.parcelas > 1) meta += ' • ' + d.parcelas + 'x de ' + formatarMoeda(d.valor / d.parcelas);
+        }
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div class="despesa-info">
+            <span class="desc">${icones[d.categoria] || '📦'} ${d.descricao}</span>
+            <span class="meta">${meta}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="despesa-valor">${formatarMoeda(d.valor)}</span>
+            <button class="btn-excluir" onclick="window.excluir('${d.id}')" title="Excluir">🗑️</button>
+          </div>`;
+        ul.appendChild(li);
+      });
+    }
+
+    function renderCartoes() {
+      const div = $('listaCartoes');
+      div.innerHTML = '';
+
+      selectCartao.innerHTML = '<option value="">Selecione o cartão</option>';
+      cartoes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.nome} (fecha ${c.fechamento}, vence ${c.vencimento})`;
+        selectCartao.appendChild(opt);
+      });
+
+      if (cartoes.length === 0) {
+        div.innerHTML = '<p class="vazio">Nenhum cartão cadastrado ainda.</p>';
+        return;
+      }
+
+      cartoes.forEach(c => {
+        const usado = calcularUsoCartao(c.id);
+        const disponivel = Math.max(0, c.limite - usado);
+
+        const div1 = document.createElement('div');
+        div1.className = 'cartao-item';
+        div1.innerHTML = `
+          <div class="info">
+            <div class="nome">💳 ${c.nome}</div>
+            <div class="detalhe">Fecha dia ${c.fechamento} • Vence dia ${c.vencimento}</div>
+            <div class="limite">Disponível: ${formatarMoeda(disponivel)} <br><span style="font-size:11px;font-weight:400;opacity:0.8;">(Limite total: ${formatarMoeda(c.limite)})</span></div>
+          </div>
+          <button class="btn-excluir" onclick="window.excluirCartao('${c.id}')" title="Excluir">🗑️</button>`;
+        div.appendChild(div1);
+      });
+    }
+
+    function renderBoletos() {
+      const div = $('listaBoletos');
+      div.innerHTML = '';
+      const hoje = hojeStr();
+
+      if (boletos.length === 0) {
+        div.innerHTML = '<p class="vazio">Nenhum boleto cadastrado.</p>';
+        return;
+      }
+
+      boletos.slice().sort((a,b) => a.vencimento.localeCompare(b.vencimento)).forEach(b => {
+        let statusClass = 'status-pendente';
+        let statusTxt = 'Pendente';
+
+        if (b.pago) {
+          statusClass = 'status-pago';
+          statusTxt = 'Pago';
+        } else if (b.vencimento < hoje) {
+          statusClass = 'status-vencido';
+          statusTxt = 'Vencido';
+        }
+
+        const div1 = document.createElement('div');
+        div1.className = 'boleto-card';
+        div1.innerHTML = `
+          <div class="boleto-info">
+            <strong>${b.descricao}</strong>
+            <span>Vencimento: ${formatarData(b.vencimento)} <span class="boleto-status ${statusClass}">${statusTxt}</span></span>
+          </div>
+          <div style="display:flex;align-items:center;">
+            <span class="boleto-valor">${formatarMoeda(b.valor)}</span>
+            ${!b.pago ? `<button class="btn-pagar" onclick="pagarBoleto('${b.id}')">Pagar</button>` : ''}
+            <button class="btn-excluir" onclick="excluirBoleto('${b.id}')" title="Excluir" style="margin-left:12px;">🗑️</button>
+          </div>
+        `;
+        div.appendChild(div1);
+      });
+    }
+
+    function renderFaturas() {
+      const div = $('listaFaturas');
+      div.innerHTML = '';
+
+      if (cartoes.length === 0) {
+        div.innerHTML = '<p class="vazio">Cadastre um cartão primeiro.</p>';
+        return;
+      }
+
+      cartoes.forEach(cartao => {
+        const despesasCartao = despesas.filter(d => d.cartaoId === cartao.id && d.tipo === 'cartao');
+        const porMes = {};
+
+        despesasCartao.forEach(d => {
+          const mesInicio = mesFatura(d.data, cartao.fechamento);
+          const valorParcela = d.valor / d.parcelas;
+          for (let p = 0; p < d.parcelas; p++) {
+            const m = adicionarMeses(mesInicio, p);
+            if (!porMes[m]) porMes[m] = [];
+            porMes[m].push({ descricao: d.descricao, valor: valorParcela, parcelaAtual: p + 1, totalParcelas: d.parcelas });
+          }
+        });
+
+        const meses = Object.keys(porMes).sort();
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-cartao-fatura';
+        btn.id = 'btn-fatura-' + cartao.id;
+        btn.onclick = function(e) { toggleCartaoFatura(cartao.id, e); };
+        btn.innerHTML = `<span>💳 ${cartao.nome}</span> <span>▼</span>`;
+        div.appendChild(btn);
+
+        const conteudo = document.createElement('div');
+        conteudo.className = 'conteudo-fatura';
+        conteudo.id = 'conteudo-fatura-' + cartao.id;
+
+        let html = '';
+        if (meses.length === 0) {
+          html += '<p style="color:#999;text-align:center;padding:12px;">Nenhuma compra lançada neste cartão.</p>';
+        } else {
+          meses.forEach(mes => {
+            const itens = porMes[mes];
+            const totalMes = itens.reduce((s, i) => s + i.valor, 0);
+            const isPago = faturasPagas.some(f => f.cartaoId === cartao.id && f.mes === mes);
+
+            html += `<div class="fatura-mes">
+              <h4><span>📅 ${nomeMes(mes)} (Vence dia ${cartao.vencimento})</span>`;
+            if (isPago) {
+              html += `<span class="tag-pago">✅ Paga</span>`;
+            } else {
+              html += `<div><button class="btn-pagar" onclick="pagarFatura('${cartao.id}', '${mes}')">Pagar Fatura</button></div>`;
+            }
+            html += `</h4>`;
+
+            itens.forEach(i => {
+              const txt = i.totalParcelas > 1 ? `${i.descricao} (${i.parcelaAtual}/${i.totalParcelas})` : i.descricao;
+              html += `<div class="fatura-parcela"><span>${txt}</span><span>${formatarMoeda(i.valor)}</span></div>`;
+            });
+            html += `<div class="fatura-total"><span>Total da fatura</span><span>${formatarMoeda(totalMes)}</span></div></div>`;
+          });
+        }
+
+        if (despesasCartao.length > 0) {
+          html += '<div class="compras-cartao"><h4>🛍️ Histórico de Compras</h4>';
+          despesasCartao.slice().sort((a,b) => b.data.localeCompare(a.data)).forEach(d => {
+            html += `<div class="compra-item">
+              <div><strong>${d.descricao}</strong><br><span style="font-size:12px;color:#666;">${formatarData(d.data)} • ${d.parcelas}x</span></div>
+              <strong style="color:#dc2626;">${formatarMoeda(d.valor)}</strong>
+            </div>`;
+          });
+          html += '</div>';
+        }
+
+        conteudo.innerHTML = html;
+        div.appendChild(conteudo);
+      });
+    }
+
+    function renderTudo() {
+      try { renderDashboard(); } catch (e) { console.error(e); }
+      try { renderDespesas(); } catch (e) { console.error(e); }
+      try { renderCartoes(); } catch (e) { console.error(e); }
+      try { renderBoletos(); } catch (e) { console.error(e); }
+      try { renderFaturas(); } catch (e) { console.error(e); }
+    }
+
+    $('filtroTipo').addEventListener('change', renderDespesas);
+    $('filtroMes').addEventListener('change', renderDespesas);
+
+    $('data').valueAsDate = new Date();
+    $('vencimentoBoleto').valueAsDate = new Date();
+    renderTudo();
+  </script>
+</body>
+</html>
