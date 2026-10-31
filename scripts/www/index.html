@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#10b981">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Minha Lista">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Lista de Compras</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2310b981'/><text y='.9em' x='50%' text-anchor='middle' font-size='60' font-family='Arial'>🛒</text></svg>">
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --primary: #10b981;
+    --primary-hover: #059669;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --text: #1e293b;
+    --text-dim: #64748b;
+    --border: #e2e8f0;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: calc(10px + var(--safe-top)) 10px calc(10px + var(--safe-bottom)) 10px;
+    overflow-x: hidden; /* Remove rolagem horizontal */
+  }
+  
+  /* CONTAINER PRINCIPAL - O ZOOM É APLICADO AQUI */
+  .container {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    max-width: 520px;
+    width: 100%;
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease;
+    transform-origin: top center;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 8px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+  }
+
+  h1 { color: var(--primary); font-size: 1.3rem; display: flex; align-items: center; gap: 6px; }
+
+  /* Botões do Cabeçalho (Engrenagem e Compartilhar) */
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn-icon {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+  }
+  .btn-icon:active { background: var(--border); transform: rotate(45deg); }
+
+  .btn-share {
+    background: var(--primary); color: #fff; border: none; padding: 8px 12px; border-radius: 10px;
+    font-size: 0.8rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;
+    transition: 0.15s; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink: 0;
+  }
+  .btn-share:active { transform: scale(0.95); background: var(--primary-hover); }
+
+  /* Indicador de salvamento */
+  .status-salvo {
+    background: var(--primary);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.3s, transform 0.3s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .status-salvo.visivel { opacity: 1; transform: scale(1); }
+
+  /* PAINEL DE CONFIGURAÇÕES (ZOOM) */
+  .config-panel {
+    background: #0f172a;
+    color: #fff;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: none;
+    animation: slideDown 0.3s ease;
+  }
+  .config-panel.visivel { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .config-panel label {
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .config-panel input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--primary);
+  }
+
+  /* Orçamento */
+  .orcamento-box {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .orcamento-box.alerta { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: var(--warn); }
+  .orcamento-box.estourado { background: linear-gradient(135deg, #fee2e2, #fecaca); border-color: var(--danger); }
+  .orcamento-box .lbl { font-size: 0.7rem; color: var(--text-dim); font-weight: bold; text-transform: uppercase; }
+  .orcamento-box .val-total { font-size: 1.3rem; font-weight: bold; color: var(--primary); }
+  .orcamento-box.alerta .val-total { color: var(--warn); }
+  .orcamento-box.estourado .val-total { color: var(--danger); }
+  
+  /* Meta */
+  .meta-wrapper {
+    display: flex; align-items: center; background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; height: 34px;
+  }
+  .meta-wrapper button {
+    background: transparent; border: none; width: 26px; height: 100%; font-size: 1rem;
+    font-weight: bold; color: var(--text-dim); cursor: pointer;
+  }
+  .meta-wrapper button:active { background: var(--border); }
+  .meta-wrapper input {
+    width: 60px; border: none; text-align: center; font-size: 0.85rem; font-weight: bold; background: transparent;
+  }
+  .meta-wrapper input:focus { outline: none; }
+
+  /* Área de adição */
+  .add-area {
+    background: var(--bg); padding: 12px; border-radius: 15px; border: 2px solid var(--border);
+    margin-bottom: 15px; transition: 0.2s;
+  }
+  .add-area:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); }
+
+  .input-nome {
+    width: 100%; padding: 12px; border: none; background: transparent; font-size: 16px;
+    color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 10px;
+  }
+  .input-nome:focus { outline: none; }
+
+  .add-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .qtd-selector {
+    display: flex; align-items: center; background: var(--card); border: 2px solid var(--border);
+    border-radius: 10px; overflow: hidden; height: 44px;
+  }
+  .qtd-selector button {
+    background: transparent; border: none; width: 34px; height: 100%; font-size: 1.2rem;
+    font-weight: bold; color: var(--text); cursor: pointer;
+  }
+  .qtd-selector button:active { background: var(--border); }
+  .qtd-selector .qtd-valor {
+    min-width: 32px; text-align: center; font-weight: bold; font-size: 1rem;
+    border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  }
+
+  /* Seletor preço total/unitário */
+  .tipo-preco {
+    display: flex; background: var(--card); border: 2px solid var(--border);
+    border-radius: 10px; overflow: hidden; height: 44px;
+  }
+  .tipo-preco button {
+    background: transparent; border: none; padding: 0 8px; font-size: 0.7rem;
+    font-weight: bold; color: var(--text-dim); cursor: pointer;
+  }
+  .tipo-preco button.ativo { background: var(--primary); color: #fff; }
+
+  /* Controle de preço com + e - */
+  .preco-wrapper {
+    display: flex; align-items: center; background: #fff; border: 2px solid var(--border);
+    border-radius: 10px; overflow: hidden; height: 44px; flex: 1; min-width: 110px;
+  }
+  .preco-wrapper button {
+    background: transparent; border: none; width: 30px; height: 100%; font-size: 1.1rem;
+    font-weight: bold; color: var(--text-dim); cursor: pointer;
+  }
+  .preco-wrapper button:active { background: var(--primary); color: #fff; }
+  .preco-wrapper input {
+    flex: 1; border: none; text-align: center; font-size: 16px; font-weight: bold;
+    background: transparent; min-width: 0;
+  }
+  .preco-wrapper input:focus { outline: none; }
+
+  .btn-adicionar {
+    flex: 1; height: 44px; background: var(--primary); color: #fff; border: none; border-radius: 10px;
+    font-size: 0.95rem; font-weight: bold; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; gap: 4px; min-width: 90px;
+  }
+  .btn-adicionar:active { transform: scale(0.97); background: var(--primary-hover); }
+
+  /* Embalagens padrão */
+  .embalagem-box {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .embalagem-box .lbl-emb {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .embalagem-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .embalagem-btn {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 2px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: 0.15s;
+    text-align: center;
+  }
+  .embalagem-btn:active { transform: scale(0.95); }
+  .embalagem-btn.ativo {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+
+  /* Lista */
+  .lista { display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+
+  .item {
+    display: flex; align-items: center; justify-content: space-between; background: var(--bg);
+    padding: 10px; border-radius: 12px; border: 1px solid var(--border);
+  }
+  .item.comprado { opacity: 0.6; background: #f1f5f9; }
+  .item.comprado .item-nome { text-decoration: line-through; color: var(--text-dim); }
+
+  .item-left { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; min-width: 0; }
+
+  .checkbox {
+    width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--card);
+  }
+  .item.comprado .checkbox { background: var(--primary); border-color: var(--primary); }
+  .item.comprado .checkbox::after { content: "✓"; color: #fff; font-size: 0.9rem; font-weight: bold; }
+
+  .item-info-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .item-nome { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-sub { font-size: 0.7rem; color: var(--text-dim); }
+
+  .item-info { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+  .qtd-controle {
+    display: flex; align-items: center; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  .qtd-controle button { background: transparent; border: none; width: 26px; height: 26px; font-weight: bold; color: var(--text-dim); cursor: pointer; }
+  .qtd-controle button:active { background: var(--border); color: var(--text); }
+  .qtd-num { min-width: 20px; text-align: center; font-weight: bold; font-size: 0.8rem; }
+
+  .item-total {
+    font-weight: bold; font-size: 0.85rem; color: var(--primary); min-width: 55px; text-align: right;
+  }
+
+  .btn-remove { background: transparent; border: none; color: #cbd5e1; font-size: 1rem; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  .btn-remove:active { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+  /* Vazio */
+  .vazio { text-align: center; padding: 25px 15px; color: var(--text-dim); }
+  .vazio-icon { font-size: 2.5rem; margin-bottom: 8px; opacity: 0.5; }
+
+  /* Rodapé */
+  .rodape {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.8rem; color: var(--text-dim); flex-wrap: wrap; gap: 8px;
+  }
+  .rodape b { color: var(--text); }
+
+  .btn-limpar {
+    background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 10px;
+    border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer;
+  }
+  .btn-limpar:active { background: rgba(239, 68, 68, 0.1); }
+</style>
+</head>
+<body>
+
+  <div class="container" id="app-container">
+    <div class="header">
+      <div class="header-left">
+        <h1>🛒 Minha Lista</h1>
+        <span class="status-salvo" id="status-salvo">💾 Salvo</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" onclick="toggleConfig()" title="Aparência">⚙️</button>
+        <button class="btn-share" onclick="compartilharLista()"><span>📤</span> Compartilhar</button>
+      </div>
+    </div>
+
+    <!-- Painel de Configurações -->
+    <div class="config-panel" id="config-panel">
+      <label>🖥️ Tamanho do App: <span id="lbl-zoom">100%</span></label>
+      <input type="range" id="slider-zoom" min="60" max="120" step="5" value="100" oninput="alterarZoom(this.value)">
+    </div>
+
+    <!-- Orçamento -->
+    <div class="orcamento-box" id="orcamento-box">
+      <div>
+        <div class="lbl">Total</div>
+        <div class="val-total" id="total-geral">R$ 0,00</div>
+      </div>
+      <div style="text-align:right">
+        <div class="lbl">Meta: R$</div>
+        <div class="meta-wrapper">
+          <button type="button" onclick="alterarMeta(-10)">−</button>
+          <input type="text" id="input-orcamento" placeholder="0" value="0" oninput="atualizarOrcamento()">
+          <button type="button" onclick="alterarMeta(10)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Área de adição -->
+    <div class="add-area">
+      <input type="text" class="input-nome" id="input-nome" placeholder="Nome do item" onkeypress="if(event.key==='Enter') adicionarItem()">
+      
+      <div class="add-row">
+        <div class="qtd-selector">
+          <button type="button" onclick="alterarQtdInput(-1)">−</button>
+          <span class="qtd-valor" id="qtd-input">1</span>
+          <button type="button" onclick="alterarQtdInput(1)">+</button>
+        </div>
+        
+        <div class="tipo-preco">
+          <button type="button" id="btn-tipo-total" class="ativo" onclick="mudarTipoPreco('total')">TOTAL</button>
+          <button type="button" id="btn-tipo-unit" onclick="mudarTipoPreco('unit')">UNIT.</button>
+        </div>
+        
+        <div class="preco-wrapper">
+          <button type="button" onclick="alterarPreco(-1)">−</button>
+          <input type="text" id="input-preco" placeholder="0,00" value="0,00">
+          <button type="button" onclick="alterarPreco(1)">+</button>
+        </div>
+      </div>
+
+      <!-- Embalagens padrão -->
+      <div class="embalagem-box">
+        <div class="lbl-emb">📦 Embalagem padrão</div>
+        <div class="embalagem-grid" id="embalagem-grid">
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(10)">10</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(12)">12</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(20)">20</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(21)">21</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(24)">24</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(36)">36</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(50)">50</button>
+          <button type="button" class="embalagem-btn" onclick="selecionarEmbalagem(100)">100</button>
+        </div>
+      </div>
+      
+      <button class="btn-adicionar" style="width:100%; margin-top:10px" onclick="adicionarItem()">+ Adicionar</button>
+    </div>
+
+    <div class="lista" id="lista-container"></div>
+
+    <div class="rodape">
+      <div><b id="contador-total">0</b> itens • <b id="contador-pendente">0</b> pendentes</div>
+      <button class="btn-limpar" onclick="limparComprados()">Limpar Comprados</button>
+    </div>
+  </div>
+
+<script>
+  let itens = [];
+  let qtdInputAtual = 1;
+  let tipoPrecoAtual = 'total';
+  let zoomAtual = 100;
+
+  // =====================================================================
+  // CONTROLE DE ZOOM (APARÊNCIA)
+  // =====================================================================
+  function toggleConfig() {
+    const panel = document.getElementById('config-panel');
+    panel.classList.toggle('visivel');
+  }
+
+  function alterarZoom(valor) {
+    zoomAtual = valor;
+    document.getElementById('lbl-zoom').textContent = valor + '%';
+    
+    // Aplica o zoom no container inteiro
+    const container = document.getElementById('app-container');
+    container.style.transform = `scale(${valor / 100})`;
+    
+    // Ajusta a margem para o container não flutuar estranhamente quando menor que 100%
+    if (valor < 100) {
+      // Compensa a redução para alinhar ao topo
+      container.style.marginBottom = `-${(100 - valor) * 3}px`; 
+    } else {
+      container.style.marginBottom = '0px';
+    }
+
+    try {
+      localStorage.setItem('lista_zoom', valor);
+    } catch(e) {}
+  }
+
+  function carregarZoom() {
+    try {
+      const salvo = localStorage.getItem('lista_zoom');
+      if (salvo) {
+        zoomAtual = parseInt(salvo);
+        document.getElementById('slider-zoom').value = zoomAtual;
+        alterarZoom(zoomAtual);
+      }
+    } catch(e) {}
+  }
+
+  // =====================================================================
+  // SALVAMENTO AUTOMÁTICO
+  // =====================================================================
+  function salvar() {
+    try {
+      const dados = {
+        itens: itens,
+        meta: document.getElementById('input-orcamento').value || '0'
+      };
+      localStorage.setItem('lista_compras_salva', JSON.stringify(dados));
+      mostrarStatusSalvo();
+    } catch (e) {
+      console.error('Erro ao salvar:', e);
+    }
+  }
+
+  function carregar() {
+    try {
+      const salvo = localStorage.getItem('lista_compras_salva');
+      if (salvo) {
+        const dados = JSON.parse(salvo);
+        itens = dados.itens || [];
+        if (dados.meta && dados.meta !== '0') {
+          document.getElementById('input-orcamento').value = dados.meta;
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao carregar:', e);
+    }
+  }
+
+  let timeoutStatus;
+  function mostrarStatusSalvo() {
+    const el = document.getElementById('status-salvo');
+    el.classList.add('visivel');
+    clearTimeout(timeoutStatus);
+    timeoutStatus = setTimeout(() => {
+      el.classList.remove('visivel');
+    }, 2000);
+  }
+
+  // =====================================================================
+  // CONVERSÃO DE VALOR
+  // =====================================================================
+  function converterValor(texto) {
+    if (!texto) return 0;
+    const limpo = texto.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
+    const numero = parseFloat(limpo);
+    return isNaN(numero) ? 0 : numero;
+  }
+
+  // =====================================================================
+  // CONTROLES DO FORMULÁRIO
+  // =====================================================================
+  function alterarQtdInput(delta) {
+    qtdInputAtual += delta;
+    if (qtdInputAtual < 1) qtdInputAtual = 1;
+    if (qtdInputAtual > 999) qtdInputAtual = 999;
+    document.getElementById('qtd-input').textContent = qtdInputAtual;
+    atualizarEmbalagemAtiva();
+  }
+
+  function selecionarEmbalagem(qtd) {
+    qtdInputAtual = qtd;
+    document.getElementById('qtd-input').textContent = qtdInputAtual;
+    atualizarEmbalagemAtiva();
+  }
+
+  function atualizarEmbalagemAtiva() {
+    const botoes = document.querySelectorAll('.embalagem-btn');
+    botoes.forEach(btn => {
+      const valor = parseInt(btn.textContent);
+      if (valor === qtdInputAtual) {
+        btn.classList.add('ativo');
+      } else {
+        btn.classList.remove('ativo');
+      }
+    });
+  }
+
+  function alterarPreco(delta) {
+    const inputPreco = document.getElementById('input-preco');
+    let valor = converterValor(inputPreco.value);
+    valor += delta;
+    if (valor < 0) valor = 0;
+    inputPreco.value = valor.toFixed(2).replace('.', ',');
+  }
+
+  function alterarMeta(delta) {
+    const inputMeta = document.getElementById('input-orcamento');
+    let valor = converterValor(inputMeta.value);
+    valor += delta;
+    if (valor < 0) valor = 0;
+    inputMeta.value = valor.toFixed(0);
+    atualizarOrcamento();
+    salvar();
+  }
+
+  function mudarTipoPreco(tipo) {
+    tipoPrecoAtual = tipo;
+    document.getElementById('btn-tipo-total').classList.toggle('ativo', tipo === 'total');
+    document.getElementById('btn-tipo-unit').classList.toggle('ativo', tipo === 'unit');
+  }
+
+  // =====================================================================
+  // ADICIONAR ITEM
+  // =====================================================================
+  function adicionarItem() {
+    const inputNome = document.getElementById('input-nome');
+    const inputPreco = document.getElementById('input-preco');
+    const nome = inputNome.value.trim();
+    const precoDigitado = converterValor(inputPreco.value);
+
+    if (nome === '') {
+      alert('Digite o nome do item!');
+      inputNome.focus();
+      return;
+    }
+
+    let precoTotal;
+    let precoUnitario;
+    
+    if (tipoPrecoAtual === 'total') {
+      precoTotal = precoDigitado;
+      precoUnitario = qtdInputAtual > 0 ? (precoDigitado / qtdInputAtual) : 0;
+    } else {
+      precoUnitario = precoDigitado;
+      precoTotal = precoDigitado * qtdInputAtual;
+    }
+
+    itens.push({
+      id: Date.now(),
+      nome: nome,
+      qtd: qtdInputAtual,
+      precoUnit: precoUnitario,
+      precoTotal: precoTotal,
+      comprado: false
+    });
+
+    inputNome.value = '';
+    inputPreco.value = '0,00';
+    qtdInputAtual = 1;
+    document.getElementById('qtd-input').textContent = '1';
+    atualizarEmbalagemAtiva();
+    inputNome.focus();
+
+    salvar();
+    desenharLista();
+  }
+
+  // =====================================================================
+  // AÇÕES NA LISTA
+  // =====================================================================
+  function toggleComprado(id) {
+    for (let i = 0; i < itens.length; i++) {
+      if (itens[i].id === id) { itens[i].comprado = !itens[i].comprado; break; }
+    }
+    salvar();
+    desenharLista();
+  }
+
+  function alterarQtdItem(id, delta) {
+    for (let i = 0; i < itens.length; i++) {
+      if (itens[i].id === id) {
+        itens[i].qtd += delta;
+        if (itens[i].qtd < 1) itens[i].qtd = 1;
+        if (itens[i].qtd > 999) itens[i].qtd = 999;
+        itens[i].precoTotal = itens[i].precoUnit * itens[i].qtd;
+        break;
+      }
+    }
+    salvar();
+    desenharLista();
+  }
+
+  function removerItem(id) {
+    itens = itens.filter(i => i.id !== id);
+    salvar();
+    desenharLista();
+  }
+
+  function limparComprados() {
+    const comprados = itens.filter(i => i.comprado).length;
+    if (comprados === 0) { alert('Nenhum item comprado para limpar.'); return; }
+    if (confirm(`Remover ${comprados} item(ns) comprado(s)?`)) {
+      itens = itens.filter(i => !i.comprado);
+      salvar();
+      desenharLista();
+    }
+  }
+
+  // =====================================================================
+  // UTILITÁRIOS
+  // =====================================================================
+  function formatarMoeda(valor) {
+    return 'R$ ' + valor.toFixed(2).replace('.', ',');
+  }
+
+  function atualizarOrcamento() {
+    const total = itens.reduce((s, i) => s + i.precoTotal, 0);
+    const meta = converterValor(document.getElementById('input-orcamento').value);
+    const box = document.getElementById('orcamento-box');
+    const totalEl = document.getElementById('total-geral');
+
+    totalEl.textContent = formatarMoeda(total);
+    box.classList.remove('alerta', 'estourado');
+    if (meta > 0) {
+      if (total > meta) box.classList.add('estourado');
+      else if (total > meta * 0.8) box.classList.add('alerta');
+    }
+  }
+
+  // =====================================================================
+  // DESENHAR LISTA
+  // =====================================================================
+  function desenharLista() {
+    const container = document.getElementById('lista-container');
+    container.innerHTML = '';
+
+    document.getElementById('contador-total').textContent = itens.length;
+    document.getElementById('contador-pendente').textContent = itens.filter(i => !i.comprado).length;
+
+    const total = itens.reduce((s, i) => s + i.precoTotal, 0);
+
+    if (itens.length === 0) {
+      container.innerHTML = `
+        <div class="vazio">
+          <div class="vazio-icon">📝</div>
+          <p>Sua lista está vazia.<br>Adicione o primeiro item acima!</p>
+        </div>
+      `;
+      atualizarOrcamento();
+      return;
+    }
+
+    for (let i = 0; i < itens.length; i++) {
+      const item = itens[i];
+      const perc = total > 0 ? ((item.precoTotal / total) * 100).toFixed(0) : 0;
+      
+      const div = document.createElement('div');
+      div.className = 'item' + (item.comprado ? ' comprado' : '');
+
+      const left = document.createElement('div');
+      left.className = 'item-left';
+      left.onclick = (function(id) { return function() { toggleComprado(id); }; })(item.id);
+
+      const checkbox = document.createElement('div');
+      checkbox.className = 'checkbox';
+      
+      const infoTexto = document.createElement('div');
+      infoTexto.className = 'item-info-texto';
+      
+      const nomeSpan = document.createElement('span');
+      nomeSpan.className = 'item-nome';
+      nomeSpan.textContent = item.nome;
+      
+      const subSpan = document.createElement('span');
+      subSpan.className = 'item-sub';
+      subSpan.textContent = formatarMoeda(item.precoUnit) + ' cada • ' + perc + '%';
+
+      infoTexto.appendChild(nomeSpan);
+      infoTexto.appendChild(subSpan);
+
+      left.appendChild(checkbox);
+      left.appendChild(infoTexto);
+
+      const info = document.createElement('div');
+      info.className = 'item-info';
+
+      const qtdCtrl = document.createElement('div');
+      qtdCtrl.className = 'qtd-controle';
+
+      const btnMenos = document.createElement('button');
+      btnMenos.textContent = '−';
+      btnMenos.onclick = (function(id) { return function(e) { e.stopPropagation(); alterarQtdItem(id, -1); }; })(item.id);
+
+      const qtdNum = document.createElement('span');
+      qtdNum.className = 'qtd-num';
+      qtdNum.textContent = item.qtd;
+
+      const btnMais = document.createElement('button');
+      btnMais.textContent = '+';
+      btnMais.onclick = (function(id) { return function(e) { e.stopPropagation(); alterarQtdItem(id, 1); }; })(item.id);
+
+      qtdCtrl.appendChild(btnMenos);
+      qtdCtrl.appendChild(qtdNum);
+      qtdCtrl.appendChild(btnMais);
+
+      const itemTotal = document.createElement('span');
+      itemTotal.className = 'item-total';
+      itemTotal.textContent = formatarMoeda(item.precoTotal);
+
+      const btnRemove = document.createElement('button');
+      btnRemove.className = 'btn-remove';
+      btnRemove.textContent = '✕';
+      btnRemove.onclick = (function(id) { return function(e) { e.stopPropagation(); removerItem(id); }; })(item.id);
+
+      info.appendChild(qtdCtrl);
+      info.appendChild(itemTotal);
+      info.appendChild(btnRemove);
+
+      div.appendChild(left);
+      div.appendChild(info);
+      container.appendChild(div);
+    }
+
+    atualizarOrcamento();
+  }
+
+  // =====================================================================
+  // COMPARTILHAR
+  // =====================================================================
+  async function compartilharLista() {
+    if (itens.length === 0) { alert('Adicione itens antes de compartilhar.'); return; }
+
+    const total = itens.reduce((s, i) => s + i.precoTotal, 0);
+    let texto = '🛒 *MINHA LISTA DE COMPRAS*\n\n';
+    const pendentes = itens.filter(i => !i.comprado);
+    const comprados = itens.filter(i => i.comprado);
+
+    if (pendentes.length > 0) {
+      texto += '📝 *A comprar:*\n';
+      pendentes.forEach(i => { texto += `• ${i.qtd}x ${i.nome} — ${formatarMoeda(i.precoTotal)}\n`; });
+      texto += '\n';
+    }
+
+    if (comprados.length > 0) {
+      texto += '✅ *Já comprados:*\n';
+      comprados.forEach(i => { texto += `• ${i.qtd}x ${i.nome} — ${formatarMoeda(i.precoTotal)}\n`; });
+      texto += '\n';
+    }
+
+    texto += `💰 *TOTAL: ${formatarMoeda(total)}*\n\n`;
+    texto += `_Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}_`;
+
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Lista de Compras', text: texto }); return; }
+      catch (err) { if (err.name === 'AbortError') return; }
+    }
+
+    try {
+      await navigator.clipboard.writeText(texto);
+      alert('📋 Lista copiada! Cole no WhatsApp.');
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      alert('📋 Lista copiada!');
+    }
+  }
+
+  // =====================================================================
+  // INICIALIZAÇÃO
+  // =====================================================================
+  carregarZoom();
+  carregar();
+  atualizarEmbalagemAtiva();
+  desenharLista();
+
+  // Previne zoom duplo no celular (bug de UX comum)
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+</script>
+</body>
+</html>
